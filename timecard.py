@@ -6,8 +6,8 @@ from typing import List, Dict, Optional, Tuple, Set
 from xml.dom import minidom
 import os
 import IPython
-import firebase_admin
-import firebase_admin.db as fdb
+# import firebase_admin
+# import firebase_admin.db as fdb
 import uuid
 
 
