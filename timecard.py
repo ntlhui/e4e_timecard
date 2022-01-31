@@ -220,5 +220,9 @@ class TimeCardCLI:
             print("%s - %s: %.2f\t%s.%s" % (startTime.strftime(timeFmt), endTime.strftime(
                 timeFmt), hours, ts_proj_name, ts_act_name))
 
+def main():
+    tc = TimeCardCLI()
 
-tc = TimeCardCLI()
+
+if __name__ == '__main__':
+    main()
