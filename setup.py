@@ -8,7 +8,7 @@ setup(
     author_email='nthui@eng.ucsd.edu',
     packages=find_packages(),
     install_requires=[
-        'pyrebase',
+        'pyrebase4',
         'ipython',
         'pyyaml',
         'appdirs',
