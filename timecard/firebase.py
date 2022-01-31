@@ -1,4 +1,6 @@
 import datetime as dt
+import threading
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 from urllib.error import HTTPError
@@ -10,6 +12,7 @@ from pyrebase.pyrebase import Database, Firebase
 from timecard.config import Config
 from timecard.data import Activity, Project, Timeslot
 from timecard.serializable import Serializable
+
 
 class Timecard:
     config = {
@@ -137,6 +140,7 @@ class Timecard:
             self.__dataRoot = Path('data', self.__user['localId'])
             self.__setUpDb()
             self.__loadFromDb()
+            threading.Thread(target=self.__autoRefresh, daemon=True).start()
         except HTTPError:
             raise Timecard.AuthenticationError
     class AuthenticationError(RuntimeError):
@@ -154,6 +158,11 @@ class Timecard:
             raise RuntimeError
         auth = self.__firebase.auth()
         auth.refresh(self.__user['refreshToken'])
+
+    def __autoRefresh(self):
+        while(1):
+            time.sleep(1800)
+            self.refreshAuth()
 
     def __loadFromDb(self):
         if self.__db is None or self.__dataRoot is None:

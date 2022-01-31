@@ -16,7 +16,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'timecard=e4e_timecard:main'
+            'timecard=timecard.timecard:main'
         ]
     }
 )

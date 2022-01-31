@@ -8,8 +8,7 @@
             "name": "e4e timecard",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/e4e_timecard.py",
-            "console": "integratedTerminal"
+            "module": "timecard.timecard"
         }
     ]
 }
