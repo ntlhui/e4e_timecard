@@ -10,7 +10,10 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pyrebase',
-        'ipython'
+        'ipython',
+        'pyyaml',
+        'appdirs',
+        'schema'
     ],
     entry_points={
         'console_scripts': [

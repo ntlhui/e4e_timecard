@@ -1,12 +1,21 @@
 #!/usr/bin/env python3.7
 import datetime as dt
+import sys
+import traceback
+from pathlib import Path
+
+import appdirs
 import IPython
-from timecard.xml_data import Timecard
-from timecard.data import Activity
+
+import timecard
+from timecard.config import Config
+from timecard.data import Activity, Project, Timeslot
+from timecard.firebase import Timecard
+
 
 class TimeCardCLI:
     def __init__(self):
-        self.tc = Timecard('test.xml')
+        self.tc = Timecard()
         print("E4E Timecard Application")
 
         lut = {
@@ -33,6 +42,7 @@ class TimeCardCLI:
             except Exception as e:
                 print("Invalid input")
                 print(e)
+                print(traceback.format_exc())
 
     def cli(self, input):
         IPython.terminal.embed.embed()
@@ -43,6 +53,9 @@ class TimeCardCLI:
         if nearestMinute == 60:
             nearestMinute = 0
             hour += 1
+        if hour == 24:
+            hour = 0
+            time += dt.timedelta(days=1)
         return time.replace(hour=hour, minute=nearestMinute, second=0, microsecond=0)
 
     def __roundTimeDelta(self, time: dt.timedelta) -> dt.timedelta:
@@ -67,7 +80,7 @@ class TimeCardCLI:
                 self.__roundTimeDelta(timeSlot.getTotalTime())
             ts_proj = timeSlot.getProject()
             if ts_proj:
-                ts_proj_name = ts_proj.getName()
+                ts_proj_name = ts_proj.name
             else:
                 ts_proj_name = 'Unknown'
             ts_act = timeSlot.getActivity()
@@ -89,7 +102,7 @@ class TimeCardCLI:
         for projectTuple, interval in report.items():
             hours = interval.total_seconds() / 60 / 60
             print("%s.%s: %.2f" %
-                  (projectTuple[0].getName(), projectTuple[1].value, hours))
+                  (projectTuple[0].name, projectTuple[1].value, hours))
             totalHours += hours
 
         print("Total: %.2f" % totalHours)
@@ -143,7 +156,7 @@ class TimeCardCLI:
         print("        where PROJECT is one of: ")
         for project in sorted(list(self.tc._projects), key=lambda x: x._name):
             print("            %s: %s" %
-                  (project.getName(), project.getDesc()))
+                  (project.name, project.desc))
         print("              DATETIME is YYYY.MM.DD.HH.MM")
 
         print("cmd - start command line")
@@ -180,7 +193,7 @@ class TimeCardCLI:
                 else:
                     projectHours += hours
                 totalHours += hours
-            print("%s: %.2f" % (project.getName(), projectHours))
+            print("%s: %.2f" % (project.name, projectHours))
 
         print("\nMeetings: %.2f" % (meetingHours))
         print("\nTotal: %.2f" % totalHours)
@@ -209,7 +222,7 @@ class TimeCardCLI:
                      ).total_seconds() / 60 / 60
             ts_proj = timeSlot.getProject()
             if ts_proj:
-                ts_proj_name = ts_proj.getName()
+                ts_proj_name = ts_proj.name
             else:
                 ts_proj_name = 'Unknown'
             ts_act = timeSlot.getActivity()
@@ -221,6 +234,9 @@ class TimeCardCLI:
                 timeFmt), hours, ts_proj_name, ts_act_name))
 
 def main():
+    configPath = Path(appdirs.user_config_dir(timecard.__appname__), 'config.yaml')
+    print(f'Config path is {configPath}')
+    config = Config.instance(configPath=configPath)
     tc = TimeCardCLI()
 
 

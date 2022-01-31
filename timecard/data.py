@@ -1,7 +1,13 @@
+from __future__ import annotations
 import datetime as dt
 import enum
 import uuid
-from typing import Optional
+from typing import Any, Optional, Dict, Union
+from uuid import UUID
+
+import schema
+
+from timecard.serializable import Serializable
 
 
 class Activity(enum.Enum):
@@ -11,28 +17,37 @@ class Activity(enum.Enum):
     Support = "SUPPORT"
 
 
-class Project:
-    def __init__(self, name: str, desc: str, uuidHex: str = None):
+class Project(Serializable):
+
+    def __init__(self, name: str, desc: str, uid: UUID = None):
         self._validateName(name)
         self._name: str = name
         self._desc: str = desc
-        if uuidHex is None:
+        if uid is None:
             self._uuid: uuid.UUID = uuid.uuid4()
         else:
-            self._uuid = uuid.UUID(uuidHex)
+            self._uuid = uid
 
-    def getName(self) -> str:
+    @property
+    def name(self) -> str:
         return self._name
 
-    def setName(self, name: str):
+    @name.setter
+    def name(self, name: str):
         self._validateName(name)
         self._name = name
 
-    def getDesc(self) -> str:
+    @property
+    def desc(self) -> str:
         return self._desc
 
-    def setDesc(self, desc: str):
+    @desc.setter
+    def desc(self, desc: str):
         self._desc = desc
+
+    @property
+    def uid(self) -> UUID:
+        return self._uuid
 
     def _validateName(self, name: str):
         if name.find('.') > 0:
@@ -41,17 +56,23 @@ class Project:
     def __str__(self) -> str:
         return self._name
 
+    SCHEMA = schema.Schema(
+        {
+            'name': str,
+            'desc': str,
+            'uuid': str
+        }
+    )
+
     @classmethod
-    def fromDict(cls, data: dict):
-        assert('name' in data)
-        assert('desc' in data)
-        assert('uuid' in data)
-        assert(len(list(data.keys())) == 3)
-        return cls(
+    def fromDict(cls, data: dict) -> Project:
+        cls.SCHEMA.validate(data)
+        return Project(
             name=data['name'],
             desc=data['desc'],
-            uuidHex=data['uuid']
+            uid=UUID(data['uuid'])
         )
+
 
     def toDict(self) -> dict:
         return {
@@ -60,24 +81,35 @@ class Project:
             "uuid": self._uuid.hex
         }
 
+    def complete(self, objects: Dict[UUID, Serializable]):
+        return
 
-class Timeslot:
-    def __init__(self, startTime: Optional[dt.datetime] = None,
+    def isComplete(self) -> bool:
+        return True
+
+class Timeslot (Serializable):
+    def __init__(self, 
+                 project: Optional[Union[Project, UUID]] = None,
+                 startTime: Optional[dt.datetime] = None,
                  endTime: Optional[dt.datetime] = None,
-                 project: Optional[Project] = None,
                  activity: Optional[Activity] = None,
-                 uuidHex: Optional[str] = None,
+                 uid: UUID = None,
                  msg: str = ""):
         if not startTime:
             startTime = dt.datetime.now()
         self._start: dt.datetime = startTime
         self._end: Optional[dt.datetime] = endTime
-        self._project: Optional[Project] = project
+        self._project = project
         self._activity: Optional[Activity] = activity
         self._msg: str = msg
-        self._uuid: uuid.UUID = uuid.uuid4()
-        if uuidHex:
-            self._uuid = uuid.UUID(uuidHex)
+        if uid:
+            self._uuid = uid
+        else:
+            self._uuid = uuid.uuid4()
+
+    @property
+    def uid(self) -> UUID:
+        return self._uuid
 
     def __str__(self) -> str:
         return f'Timeslot({self._start}, {self._end}, {self._project}, {self._activity}, {self._uuid}, {self._msg})'
@@ -92,7 +124,7 @@ class Timeslot:
     def getActivity(self) -> Optional[Activity]:
         return self._activity
 
-    def getProject(self) -> Optional[Project]:
+    def getProject(self) -> Union[Project, UUID]:
         return self._project
 
     def setEndTime(self, endTime: dt.datetime = None):
@@ -125,41 +157,61 @@ class Timeslot:
     def setMsg(self, msg: str):
         self._msg = msg
 
-    def toDict(self) -> dict:
-        retval = {
-            "startTime": str(self._start.timestamp()),
-            "endTime": None,
-            "code": None,
-            "uuid": self._uuid.hex,
-            "msg": self._msg
-        }
+    def toDict(self) -> Dict[str, Any]:
+        if isinstance(self._project, UUID):
+            project = self._project.hex
+        elif isinstance(self._project, Project):
+            project = self._project.uid.hex
+        else:
+            raise RuntimeError
+        if self._activity is not None:
+            activity = self._activity.value
+        else:
+            activity = None
         if self._end:
-            retval['endTime'] = str(self._end.timestamp())
-        if self._project and self._activity:
-            retval['code'] = self._project.getName() + "." + \
-                self._activity.value
+            endTime = int(self._end.timestamp())
+        else:
+            endTime = None
+        retval = {
+            "startTime": int(self._start.timestamp()),
+            "endTime": endTime,
+            "project": project,
+            "uuid": self._uuid.hex,
+            "msg": self._msg,
+            'activity': activity
+        }
         return retval
 
+    SCHEMA = schema.Schema(
+        {
+            'startTime': int,
+            'endTime': int,
+            'project': str,
+            'uuid': str,
+            schema.Optional('msg'): str,
+            'activity': str
+        }
+    )
+
     @classmethod
-    def fromDict(cls, data: dict, projects: set):
-        assert("startTime" in data)
-        assert("endTime" in data)
-        assert("code" in data)
-        assert('uuid' in data)
-        assert(data["code"] is not None)
-        if "msg" not in data:
-            data['msg'] = ""
+    def fromDict(cls, data: dict) -> Timeslot:
+        cls.SCHEMA.validate(data)
 
-        projectCode = data['code'].split('.')[0]
-        project = next(
-            project for project in projects if project.getName() == projectCode)
-        activity = Activity(data['code'].split('.')[1])
-
-        return cls(
+        return Timeslot(
             startTime=dt.datetime.fromtimestamp(float(data['startTime'])),
             endTime=dt.datetime.fromtimestamp(float(data['endTime'])),
-            project=project,
-            activity=activity,
-            uuidHex=data['uuid'],
+            project=UUID(data['project']),
+            activity=Activity(data['activity']),
+            uid=uuid.UUID(data['uuid']),
             msg=data['msg'])
+
+    def complete(self, objects: Dict[UUID, Serializable]):
+        if isinstance(self._project, UUID):
+            project_obj = self._resolveObj(self._project, Project, objects)
+            if project_obj is not None:
+                self._project = project_obj
+
+    def isComplete(self) -> bool:
+        return isinstance(self._project, Project)
+
 
