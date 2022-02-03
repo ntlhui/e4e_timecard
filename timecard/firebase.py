@@ -62,12 +62,15 @@ class Timecard:
         self._activeSlot.setMsg(msg)
         self._timeslots.append(self._activeSlot)
 
-        data = {
-            self.__dataRoot.joinpath('timeslots', self._activeSlot.uid.hex).as_posix():self._activeSlot.toDict()
-        }
-        self.__db.update(data, token=self.__token)
+        self.update_timeslot(self._activeSlot)
 
         self._activeSlot = None
+
+    def update_timeslot(self, timeslot: Timeslot):
+        data = {
+            self.__dataRoot.joinpath('timeslots', timeslot.uid.hex).as_posix():timeslot.toDict()
+        }
+        self.__db.update(data, token=self.__token)
         
 
 
@@ -157,8 +160,9 @@ class Timecard:
         if self.__user is None:
             raise RuntimeError
         auth = self.__firebase.auth()
-        auth.refresh(self.__user['refreshToken'])
-
+        self.__user = auth.refresh(self.__user['refreshToken'])
+        self.__token = self.__user['idToken']
+        
     def __autoRefresh(self):
         while(1):
             time.sleep(1800)
