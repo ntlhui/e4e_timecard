@@ -123,7 +123,7 @@ class Timecard:
             weekNum = dt.date.today().isocalendar()[1]
 
         timeslots = [ts for ts in self._timeslots if ts.getStartTime().date().isocalendar()[
-            1] == weekNum]
+            1] == weekNum and ts.getStartTime().year == dt.date.today().year]
         return timeslots
 
     def getProjects(self) -> Dict[str, Project]:
