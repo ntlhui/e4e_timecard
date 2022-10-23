@@ -29,12 +29,14 @@ class TimeCardCLI:
             "cli": self.cli,
             "weekrpt": self.weekReport,
             "weekentries": self.weekEntries,
+            "addproject": self.addProjectCmd,
+            "listprojects": self.listProjectCmd,
         }
 
         self._run = True
 
         while self._run:
-            userInput = input()
+            userInput = input("> ")
             if userInput == '':
                 continue
             try:
@@ -145,6 +147,21 @@ class TimeCardCLI:
     def exit(self, *args):
         self.tc.close()
         self._run = False
+
+    def listProjectCmd(self, *args):
+        projects = self.tc.getProjects()
+        for name, project in projects.items():
+            print(project.name, project.desc)
+
+    def addProjectCmd(self, cmd:str):
+        cmd_tokens = cmd.split()
+        if len(cmd_tokens) < 3:
+            raise RuntimeError("usage: addproject [name] [description]")
+        proj_name = cmd_tokens[1]
+        proj_desc = cmd[cmd.find(proj_name) + len(proj_name) : ].strip()
+        new_proj = Project(proj_name, proj_desc)
+        self.tc.addProject(new_proj)
+        print("New project added")
 
     def printHelp(self, *args):
         print("help - print this message")
