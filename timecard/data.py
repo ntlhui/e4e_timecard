@@ -130,6 +130,8 @@ class Timeslot (Serializable):
     def setEndTime(self, endTime: dt.datetime = None):
         if endTime is None:
             endTime = dt.datetime.now()
+        if endTime <= self._start:
+            raise RuntimeError("Slot cannot end before start")
         self._end = endTime
 
     def getEndTime(self) -> Optional[dt.datetime]:
